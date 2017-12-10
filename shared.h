@@ -94,7 +94,8 @@ struct font
 #define CODE_FUNCTIONS	\
 	X(void *, reload, void *userdata)	\
 	X(void, render, void *userdata, i32 window_width, i32 window_height)	\
-	X(void, mouse, void *userdata, i32 x, i32 y, i32 buttons)	\
+	X(void, mouse, void *userdata, i32 x, i32 y, i32 dz, i32 buttons)	\
+	X(void, keyboard, void *userdata, u32 codepoint)	\
 	/* end */
 
 #define OPENGL_FUNCTIONS	\
@@ -128,4 +129,6 @@ struct font
 	X(void, glBindTexture, u32 target, u32 texture)	\
 	X(void, glTexImage2D, u32 target, i32 level, i32 internalFormat, i32 width, i32 height, i32 border, u32 format, u32 type, const void *data)	\
 	X(void, glBlendFunc, u32 sfactor, u32 dfactor)	\
+	X(void, glGetProgramInfoLog, u32 program, i32 maxLength, i32 *length, char *infoLog)	\
+	X(void, glGetShaderInfoLog, u32 shader, i32 maxLength, i32 *length, char *infoLog)	\
 	/* end */

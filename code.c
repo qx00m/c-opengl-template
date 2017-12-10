@@ -497,13 +497,22 @@ reload(void *userdata)
 }
 
 API_EXPORT void
-mouse(void *userdata, i32 x, i32 y, i32 buttons)
+mouse(void *userdata, i32 x, i32 y, i32 dz, i32 buttons)
 {
+	unused(dz);
+
 	struct app_state *state = userdata;
 
 	state->mouse_x = x;
 	state->mouse_y = y;
 	state->mouse_buttons = buttons;
+}
+
+API_EXPORT void
+keyboard(void *userdata, u32 codepoint)
+{
+	unused(userdata);
+	unused(codepoint);
 }
 
 API_EXPORT void

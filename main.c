@@ -128,12 +128,6 @@ sys_create_font(const wchar_t *name, i32 pixel_height)
 i32
 sys_render_glyph(struct font *font, u32 codepoint)
 {
-	i32 result = 0;
-
-	ABC abc;
-	GetCharABCWidths(font->sys, codepoint, codepoint, &abc);
-	result = abc.abcA + abc.abcB + abc.abcC;
-
 	wchar_t text[2];
 	int n = 0;
 	if (codepoint < 0x10000) {
@@ -153,6 +147,9 @@ sys_render_glyph(struct font *font, u32 codepoint)
 
 	TextOut(font->sys, font->default_x, font->default_y, text, n);
 
+	ABC abc;
+	GetCharABCWidths(font->sys, codepoint, codepoint, &abc);
+	i32 result = abc.abcA + abc.abcB + abc.abcC;
 	return result;
 }
 
@@ -276,6 +273,15 @@ WinRender(HWND hwnd, HDC dc)
 	assert(ok);
 }
 
+internal inline u32
+WinMouseButtons(WPARAM wParam)
+{
+	u32 buttons = 0;
+	if (wParam & MK_LBUTTON) buttons |= BUTTON_LEFT;
+	if (wParam & MK_RBUTTON) buttons |= BUTTON_RIGHT;
+	return buttons;
+}
+
 internal void
 WinMouse(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
@@ -286,12 +292,7 @@ WinMouse(HWND hwnd, WPARAM wParam, LPARAM lParam)
 	i32 x = (i16)(lParam & 0xFFFF);
 	i32 y = h - (i16)((lParam >> 16) & 0xFFFF) - 1;
 
-	u32 buttons = 0;
-	if (wParam & MK_LBUTTON) buttons |= BUTTON_LEFT;
-	if (wParam & MK_RBUTTON) buttons |= BUTTON_RIGHT;
-
-	mouse(global_userdata, x, y, buttons);
-
+	mouse(global_userdata, x, y, 0, WinMouseButtons(wParam));
 }
 
 internal LRESULT CALLBACK
@@ -339,8 +340,25 @@ WindowProcMain(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			WinMouse(hwnd, wParam, lParam);
 		} break;
 
+		case WM_MOUSEWHEEL: {
+			i32 dz = (i16)((wParam >> 16) & 0xFFFF);
+
+			POINT p;
+			p.x = (i16)(lParam & 0xFFFF);
+			p.y = (i16)((lParam >> 16) & 0xFFFF);
+
+			MapWindowPoints(0, hwnd, &p, 1);
+
+			RECT r;
+			GetClientRect(hwnd, &r);
+			p.y = (r.bottom - r.top) - p.y - 1;
+
+			mouse(global_userdata, p.x, p.y, dz, WinMouseButtons(wParam));
+		} break;
+
 		case WM_CHAR: {
-			// wParam
+			u32 codepoint = (u32)wParam;
+			keyboard(global_userdata, codepoint);
 		} break;
 
 		case WM_UNICHAR: {
@@ -348,7 +366,8 @@ WindowProcMain(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				result = TRUE;
 			}
 			else {
-				// wParam
+				u32 codepoint = (u32)wParam;
+				keyboard(global_userdata, codepoint);
 			}
 		} break;
 
@@ -500,10 +519,6 @@ void WinEntry(void)
     	HGLRC rc = wglCreateContextAttribsARB(dc, 0, context_attributes);
 	wglMakeCurrent(dc, rc);
 
-	////////
-	//
-	// init opengl.
-	//
 	wglSwapIntervalEXT(1);
 	reload_code();
 

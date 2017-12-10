@@ -102,6 +102,11 @@ sys_create_font(const wchar_t *name, i32 pixel_height)
 	result->bitmap_width = tm.tmMaxCharWidth * 3;
 	result->bitmap_height = tm.tmHeight * 3;
 
+	result->ascent = tm.tmDescent;
+	result->descent = tm.tmAscent;
+	result->height = tm.tmHeight;
+	result->external_leading = tm.tmExternalLeading;
+
 	BITMAPINFO bi = {
 		.bmiHeader.biSize = sizeof(bi.bmiHeader),
 		.bmiHeader.biWidth = result->bitmap_width,
@@ -257,7 +262,7 @@ reload_code(void)
 	}
 }
 
-internal inline void
+internal void
 WinRender(HWND hwnd, HDC dc)
 {
 	RECT r;
@@ -269,6 +274,24 @@ WinRender(HWND hwnd, HDC dc)
 
 	BOOL ok = SwapBuffers(dc);
 	assert(ok);
+}
+
+internal void
+WinMouse(HWND hwnd, WPARAM wParam, LPARAM lParam)
+{
+	RECT r;
+	GetClientRect(hwnd, &r);
+	i32 h = r.bottom - r.top;
+
+	i32 x = (i16)(lParam & 0xFFFF);
+	i32 y = h - (i16)((lParam >> 16) & 0xFFFF) - 1;
+
+	u32 buttons = 0;
+	if (wParam & MK_LBUTTON) buttons |= BUTTON_LEFT;
+	if (wParam & MK_RBUTTON) buttons |= BUTTON_RIGHT;
+
+	mouse(global_userdata, x, y, buttons);
+
 }
 
 internal LRESULT CALLBACK
@@ -286,6 +309,47 @@ WindowProcMain(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_DESTROY: {
 			PostQuitMessage(0);
+		} break;
+
+		case WM_LBUTTONDOWN: {
+			if ((wParam & MK_RBUTTON) != MK_RBUTTON)
+				SetCapture(hwnd);
+			WinMouse(hwnd, wParam, lParam);
+		} break;
+
+		case WM_LBUTTONUP: {
+			if ((wParam & MK_RBUTTON) != MK_RBUTTON)
+				ReleaseCapture();
+			WinMouse(hwnd, wParam, lParam);
+		} break;
+
+		case WM_RBUTTONDOWN: {
+			if ((wParam & MK_LBUTTON) != MK_LBUTTON)
+				SetCapture(hwnd);
+			WinMouse(hwnd, wParam, lParam);
+		} break;
+
+		case WM_RBUTTONUP: {
+			if ((wParam & MK_LBUTTON) != MK_LBUTTON)
+				ReleaseCapture();
+			WinMouse(hwnd, wParam, lParam);
+		} break;
+
+		case WM_MOUSEMOVE: {
+			WinMouse(hwnd, wParam, lParam);
+		} break;
+
+		case WM_CHAR: {
+			// wParam
+		} break;
+
+		case WM_UNICHAR: {
+			if (wParam == UNICODE_NOCHAR) {
+				result = TRUE;
+			}
+			else {
+				// wParam
+			}
 		} break;
 
 		default: {

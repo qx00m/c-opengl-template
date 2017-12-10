@@ -17,9 +17,11 @@ do {				\
 
 #define allocate(type, n) sys_allocate((n) * sizeof(type), _Alignof(type))
 
+typedef int16_t i16;
 typedef int32_t i32;
 typedef uint8_t u8;
 typedef uint32_t u32;
+typedef uint64_t u64;
 typedef float f32;
 
 #define GL_TRIANGLES            0x0004
@@ -43,8 +45,11 @@ typedef float f32;
 #define GL_RGBA                 0x1908
 #define GL_UNSIGNED_BYTE        0x1401
 #define GL_BLEND                0x0BE2
-#define GL_ONE_MINUS_SRC_ALPHA            0x0303
-#define GL_ONE                            1
+#define GL_ONE_MINUS_SRC_ALPHA  0x0303
+#define GL_ONE                  1
+
+#define BUTTON_LEFT	0x01
+#define BUTTON_RIGHT 	0x02
 
 struct glyph
 {
@@ -69,6 +74,11 @@ struct font
 	i32 bitmap_height;
 	u32 *bits;
 
+	i32 ascent;
+	i32 descent;
+	i32 height;
+	i32 external_leading;
+
 	i32 glyphs_max;
 	i32 glyphs_used;
 	struct glyph *glyphs;
@@ -84,6 +94,7 @@ struct font
 #define CODE_FUNCTIONS	\
 	X(void *, reload, void *userdata)	\
 	X(void, render, void *userdata, i32 window_width, i32 window_height)	\
+	X(void, mouse, void *userdata, i32 x, i32 y, i32 buttons)	\
 	/* end */
 
 #define OPENGL_FUNCTIONS	\

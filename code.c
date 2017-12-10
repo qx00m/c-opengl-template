@@ -66,9 +66,77 @@ struct app_state
 
 	struct font *console_font;
 	struct font *ui_font;
+
+	i32 mouse_x;
+	i32 mouse_y;
+	u32 mouse_buttons;
+
+	u32 pad;
 };
 
 ////////
+
+internal char *
+label_i32d(char *dst, const char *s, i32 x)
+{
+	while (*s)
+		*dst++ = *s++;
+
+	u64 num = 0;
+	if (x < 0) {
+		*dst++ = '-';
+		num = -x;
+	}
+	else {
+		num = x;
+	}
+
+	char digits[20];
+	char *p = digits;
+	do
+		*p++ = (num % 10) + '0';
+	while (num /= 10);
+
+	while (p != digits)
+		*dst++ = *--p;
+
+	*dst = 0;
+
+	return dst;
+}
+
+internal char *
+label_u32h(char *dst, const char *s, u32 x)
+{
+	while (*s)
+		*dst++ = *s++;
+
+	*dst++ = '0';
+	*dst++ = 'x';
+
+	u32 shift = 32;
+	while (shift) {
+		shift -= 4;
+		char c = (x >> shift) & 0xF;
+		c = (c > 9) ? c + 'A' - 10 : c + '0';
+		*dst++ = c;
+	}
+
+	*dst = 0;
+	return dst;
+}
+
+internal inline f32
+round(f32 x)
+{
+    return (f32)(i32)(x + 0.5f);
+}
+
+internal inline f32
+line_height(struct font *font)
+{
+	return (f32)(font->height + font->external_leading);
+}
 
 internal inline void
 opengl_attach_shader(u32 program, const char *src, u32 type)
@@ -222,16 +290,16 @@ mesh_rect2d(struct vertex_buffer *buffer, f32 x0, f32 y0, f32 x1, f32 y1, f32 z,
 	v[5] = (struct vertex){ { x0, y1, z }, { u0, v1 }, color };
 }
 
-internal void
-render_ascii(struct app_state *state, struct font *font, const char *s, f32 x, f32 y, f32 z, struct vec4 color)
+internal struct vec2
+print(struct app_state *state, struct font *font, const char *s, struct vec2 cursor, f32 z, struct vec4 color)
 {
 	f32 w = (f32)state->atlas_width;
 	f32 h = (f32)state->atlas_height;
 
 	state->vertex_buffer.used = 0;
 
-	x = (f32)(i32)(x + 0.5f);
-	y = (f32)(i32)(y + 0.5f);
+	f32 x = round(cursor.x);
+	f32 y = round(cursor.y);
 
 	while (*s) {
 		u32 codepoint = (u32)*s;
@@ -257,7 +325,7 @@ render_ascii(struct app_state *state, struct font *font, const char *s, f32 x, f
 	}
 
 	if (state->vertex_buffer.used == 0)
-		return;
+		return cursor;
 
 	if (state->atlas_is_dirty) {
 		glBindTexture(GL_TEXTURE_2D, state->atlas);
@@ -276,10 +344,22 @@ render_ascii(struct app_state *state, struct font *font, const char *s, f32 x, f
 	glUseProgram(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_BLEND);
+
+	cursor.x = x;
+	return cursor;
 }
 
+internal struct vec2
+println(struct app_state *state, struct font *font, const char *s, struct vec2 cursor, f32 z, struct vec4 color)
+{
+	print(state, font, s, cursor, z, color);
+	cursor.y -= line_height(font);
+	return cursor;
+}
+
+
 internal inline void
-render_rect2d(struct app_state *state, struct rect2d position, f32 z, struct vec4 color)
+draw_rect2d(struct app_state *state, struct rect2d position, f32 z, struct vec4 color)
 {
 	state->vertex_buffer.used = 0;
 	mesh_rect2d(&state->vertex_buffer, position.x0, position.y0, position.x1, position.y1, z, 0.f, 0.f, 0.f, 0.f, color);
@@ -417,6 +497,16 @@ reload(void *userdata)
 }
 
 API_EXPORT void
+mouse(void *userdata, i32 x, i32 y, i32 buttons)
+{
+	struct app_state *state = userdata;
+
+	state->mouse_x = x;
+	state->mouse_y = y;
+	state->mouse_buttons = buttons;
+}
+
+API_EXPORT void
 render(void *userdata, i32 window_width, i32 window_height)
 {
 	struct app_state *state = userdata;
@@ -441,16 +531,37 @@ render(void *userdata, i32 window_width, i32 window_height)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	////////
+	//
+	// some test rendering.
+
+	f32 z = 0.f;
 
 	struct vec4 white_color = { 1.f, 1.f, 1.f, 1.f };
 	struct vec4 red_color = { 1.f, 0.f, 0.f, 1.f };
 
+	struct vec2 cursor = { 100.f, 80.f };
+
 	const char *s = "The quick brown fox jumps over the lazy dog.";
-	render_ascii(state, state->console_font, s, 100.f, 80.f, 0.f, white_color);
-	render_ascii(state, state->ui_font, s, 100.f, 100.f, 0.f, white_color);
+	cursor = println(state, state->console_font, s, cursor, z, white_color);
+	cursor = println(state, state->ui_font, s, cursor, z, white_color);
 
 	struct rect2d bounds = { 0.f, (f32)window_height - 32.f, (f32)window_width, (f32)window_height };
-	render_rect2d(state, bounds, 0.f, red_color);
+	draw_rect2d(state, bounds, z, red_color);
+
+	////////
+	//
+	// display user input state.
+
+	char buf[128];
+	cursor.x = (f32)window_width - 250.f;
+	cursor.y = (f32)window_height - line_height(state->console_font);
+
+	label_i32d(buf, "mouse x: ", state->mouse_x);
+	cursor = println(state, state->console_font, buf, cursor, z, white_color);
+	label_i32d(buf, "mouse y: ", state->mouse_y);
+	cursor = println(state, state->console_font, buf, cursor, z, white_color);
+	label_u32h(buf, "buttons: ", state->mouse_buttons);
+	cursor = println(state, state->console_font, buf, cursor, z, white_color);
 }
 
 int _fltused = 0;

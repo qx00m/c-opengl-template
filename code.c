@@ -497,7 +497,7 @@ reload(void *userdata)
 }
 
 API_EXPORT void
-mouse(void *userdata, i32 x, i32 y, i32 dz, i32 buttons)
+mouse(void *userdata, i32 x, i32 y, i32 dz, u32 buttons)
 {
 	unused(dz);
 

@@ -94,7 +94,7 @@ struct font
 #define CODE_FUNCTIONS	\
 	X(void *, reload, void *userdata)	\
 	X(void, render, void *userdata, i32 window_width, i32 window_height)	\
-	X(void, mouse, void *userdata, i32 x, i32 y, i32 dz, i32 buttons)	\
+	X(void, mouse, void *userdata, i32 x, i32 y, i32 dz, u32 buttons)	\
 	X(void, keyboard, void *userdata, u32 codepoint)	\
 	/* end */
 

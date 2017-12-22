@@ -132,3 +132,46 @@ struct font
 	X(void, glGetProgramInfoLog, u32 program, i32 maxLength, i32 *length, char *infoLog)	\
 	X(void, glGetShaderInfoLog, u32 shader, i32 maxLength, i32 *length, char *infoLog)	\
 	/* end */
+
+internal inline i32
+max_i32(i32 a, i32 b)
+{
+	return a > b ? a : b;
+}
+
+internal inline char *
+copy_string(char *b, char *e, const char *s)
+{
+	if (b == e)
+		return b;
+
+	while (b + 1 != e && *s)
+		*b++ = *s++;
+
+	*b = 0;
+	return b;
+}
+
+internal char *
+to_string_u64(char *b, char *e, u64 num, u32 base, i32 minwidth, char fillchar)
+{
+	if (b == e)
+		return b;
+
+	char digits[64];
+	char *p = digits;
+
+	do
+		*p++ = "0123456789ABCDEF"[num % base];
+	while (num /= base);
+
+	i32 n = max_i32(0, minwidth - (i32)(p - digits));
+	while (b + 1 != e && n--)
+		*b++ = fillchar;
+
+	while (b + 1 != e && p != digits)
+		*b++ = *--p;
+
+	*b = 0;
+	return b;
+}

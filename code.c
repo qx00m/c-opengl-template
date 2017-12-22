@@ -77,53 +77,30 @@ struct app_state
 ////////
 
 internal char *
-label_i32d(char *dst, const char *s, i32 x)
+label_i32d(char *b, char *e, const char *s, i32 x)
 {
-	while (*s)
-		*dst++ = *s++;
+	b = copy_string(b, e, s);
 
-	u64 num = 0;
+	u64 num;
+
 	if (x < 0) {
-		*dst++ = '-';
+		b = copy_string(b, e, "-");
 		num = -x;
 	}
 	else {
 		num = x;
 	}
 
-	char digits[20];
-	char *p = digits;
-	do
-		*p++ = (num % 10) + '0';
-	while (num /= 10);
-
-	while (p != digits)
-		*dst++ = *--p;
-
-	*dst = 0;
-
-	return dst;
+	return to_string_u64(b, e, num, 10, 0, ' ');
 }
 
 internal char *
-label_u32h(char *dst, const char *s, u32 x)
+label_u32h(char *b, char *e, const char *s, u32 x)
 {
-	while (*s)
-		*dst++ = *s++;
+	b = copy_string(b, e, s);
+	b = copy_string(b, e, "0x");
 
-	*dst++ = '0';
-	*dst++ = 'x';
-
-	u32 shift = 32;
-	while (shift) {
-		shift -= 4;
-		char c = (x >> shift) & 0xF;
-		c = (c > 9) ? c + 'A' - 10 : c + '0';
-		*dst++ = c;
-	}
-
-	*dst = 0;
-	return dst;
+	return to_string_u64(b, e, x, 16, 8, '0');
 }
 
 internal inline f32
@@ -562,14 +539,17 @@ render(void *userdata, i32 window_width, i32 window_height)
 	// display user input state.
 
 	char buf[128];
+	char *b = buf;
+	char *e = b + 128;
+
 	cursor.x = (f32)window_width - 250.f;
 	cursor.y = (f32)window_height - line_height(state->console_font);
 
-	label_i32d(buf, "mouse x: ", state->mouse_x);
+	label_i32d(b, e, "mouse x: ", state->mouse_x);
 	cursor = println(state, state->console_font, buf, cursor, z, white_color);
-	label_i32d(buf, "mouse y: ", state->mouse_y);
+	label_i32d(b, e, "mouse y: ", state->mouse_y);
 	cursor = println(state, state->console_font, buf, cursor, z, white_color);
-	label_u32h(buf, "buttons: ", state->mouse_buttons);
+	label_u32h(b, e, "buttons: ", state->mouse_buttons);
 	cursor = println(state, state->console_font, buf, cursor, z, white_color);
 }
 
